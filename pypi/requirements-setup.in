@@ -1,0 +1,11 @@
+coverage
+faker
+invoke
+pip-tools
+pytest
+pytest-cov
+pytest-html
+pytest-mock
+python-dotenv
+shortuuid
+wheel
