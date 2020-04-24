@@ -104,6 +104,7 @@ def test(c):
     Testing
     """
     c.run("pytest")
+    c.run("radon cc -s . -i task.py")
 
 
 @task

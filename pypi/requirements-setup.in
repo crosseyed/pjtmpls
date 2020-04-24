@@ -7,5 +7,6 @@ pytest-cov
 pytest-html
 pytest-mock
 python-dotenv
+radon
 shortuuid
 wheel
