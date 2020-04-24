@@ -1,6 +1,7 @@
 # prj:render
 import os
 import subprocess
+import platform
 
 from dotenv import load_dotenv
 from {{.Project.NAME}} import metadata
@@ -105,6 +106,24 @@ def test(c):
     """
     c.run("pytest")
     c.run("radon cc -s . -i task.py")
+
+
+@task
+def reports(c):
+    """
+    Open reports
+    """
+    view = None
+    if platform.system() == "Linux":
+        view = "xdg-open"
+    elif platform.system() == "Darwin":
+        view = "open"
+    elif platform.system() == "Windows":
+        view = "start"
+    cov = os.path.join("reports","htmlcov","index.html")
+    unit = os.path.join("reports","unit","index.html")
+    c.run("{} {}".format(view, cov))
+    c.run("{} {}".format(view, unit))
 
 
 @task
