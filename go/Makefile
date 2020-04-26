@@ -1,11 +1,17 @@
+# prj:render
 SHELL = /bin/bash
 
 # Project
-NAME := $(shell basename $$(pwd))
+NAME := {{ .Project.NAME }}
+GOPATH := $(shell go env GOPATH)
 VERSION ?= $(shell cat VERSION)
+COMMIT := $(shell test -d .git && git rev-parse --short HEAD)
+BUILD_INFO := $(COMMIT)-$(shell date -u +"%Y%m%d-%H%M%SZ")
 HASCMD := $(shell test -d cmd && echo "true")
 OS := $(shell uname | tr '[:upper:]' '[:lower:]')
 ARCH := $(shell uname -m | perl -p -e 's/x86_64/amd64/; s/i386/386/')
+
+RELEASE_DESCRIPTION := Standard release
 
 ISRELEASED := $(shell git show-ref v$$(cat VERSION) 2>&1 > /dev/null && echo "true")
 
@@ -21,10 +27,11 @@ ROOT = $(shell pwd)
 GOMODOPTS = GO111MODULE=on
 GOGETOPTS = GO111MODULE=off
 GOFILES := $(shell find cmd pkg internal src -name '*.go' 2> /dev/null)
-GODIRS = $(shell find . -type d -maxdepth 1 -mindepth 1 | egrep 'cmd|internal|pkg|api')
+GODIRS = $(shell find . -maxdepth 1 -mindepth 1 -type d | egrep 'cmd|internal|pkg|api')
 
 .PHONY: build _build _build_xcompile browsetest cattest clean deps _deps depsdev deploy _go.mod _go.mod_err \
-        _isreleased lint release _release _release_gitlab test _test _test_setup _test_setup_home
+        _isreleased lint release _release _release_gitlab test _test \
+		unit codecomplexity codecoverage _unit _codecomplexity _codecoverage 
 
 #
 # End user targets
@@ -42,13 +49,25 @@ installauto:
 	fswatch -o cmd/* internal/* --one-per-batch | xargs -n1 -I{} bash -c 'echo "make install # $$(date)"; make install; echo'
 
 clean:
-	rm -rf .cache s2deletemarkers dist reports tmp vendor
+	-test -f tmp/server.pid && kill -TERM $$(cat tmp/server.pid)
+	rm -rf .cache prjstart dist reports tmp vendor
 
 testsetup:
 	@$(DOTENV) make _test_setup
 
 test: deps
-	@$(DOTENV) make _test
+	@$(DOTENV) make _unit
+	@$(DOTENV) make _codecoverage
+	@$(DOTENV) make _codecomplexity
+
+unit: deps
+	@$(DOTENV) make _unit
+
+codecoverage: 
+	@$(DOTENV) make _codecoverage
+
+codecomplexity:
+	@$(DOTENV) make _codecomplexity
 
 testauto:
 	fswatch -o cmd/* internal/* test/* --one-per-batch | xargs -n1 -I{} bash -c 'echo "make test # $$(date)"; make test; echo'
@@ -60,7 +79,10 @@ deploy: build
 	@echo TODO
 
 release:
-	@VERSION=$(VERSION) $(DOTENV) make _release
+	@VERSION=$(VERSION) $(DOTENV) make _release 2> /dev/null
+
+release_publish:
+	@VERSION=$(VERSION) $(DOTENV) goreleaser release
 
 .PHONY: tag
 tag:
@@ -78,7 +100,7 @@ depsdev:
 ifeq ($(USEGITLAB),true)
 	@mkdir -p $(ROOT)/.cache/{go,gomod}
 endif
-	@make $(GOGETS)
+	@GO111MODULE=on make $(GOGETS)
 
 bumpmajor:
 	git fetch --tags
@@ -111,9 +133,8 @@ getversion:
 # Helper targets
 #
 _build:
-ifeq ($(XCOMPILE),true)
-	@make dist/linux/$(NAME) dist/darwin/$(NAME)
-else
+	@test -d .cache || go fmt ./...
+ifeq ($(HASCMD),true)
 	@make $(NAME)
 endif
 
@@ -124,38 +145,37 @@ $(GOPATH)/bin/$(NAME): $(NAME)
 	install -m 755 $(NAME) $(GOPATH)/bin/$(NAME)
 
 _deps:
-	@$(GOMODOPTS) go mod tidy
-	@$(GOMODOPTS) go mod vendor
+	$(GOMODOPTS) go mod tidy
+	$(GOMODOPTS) go mod vendor
 
-GOGETS := github.com/jstemmer/go-junit-report github.com/golangci/golangci-lint/cmd/golangci-lint \
-		  github.com/ains/go-test-html github.com/fzipp/gocyclo github.com/joho/godotenv/cmd/godotenv \
-		  github.com/crosseyed/versionbump/cmd/versionbump github.com/stretchr/testify github.com/sosedoff/gitkit
+GOGETS := github.com/jstemmer/go-junit-report github.com/golangci/golangci-lint/cmd/golangci-lint@v1.25.0 \
+		  github.com/goreleaser/goreleaser github.com/fzipp/gocyclo github.com/joho/godotenv/cmd/godotenv \
+		  github.com/crosseyed/versionbump/cmd/versionbump github.com/sosedoff/gitkit
 .PHONY: $(GOGETS)
 $(GOGETS):
-	go get -u $@
+	cd /tmp; go get $@
 
-_test: _test_setup
+_unit:
+	@make _test_setup_gitserver
 	### Unit Tests
 	@(go test -timeout 5s -covermode atomic -coverprofile=./reports/coverage.out -v ./...; echo $$? > reports/exitcode.txt) 2>&1 | tee reports/test.txt
 	@cat ./reports/test.txt | go-junit-report > reports/junit.xml
+	@exit $$(cat reports/exitcode.txt)
+
+_codecoverage:
 	### Code Coverage
 	@go tool cover -func=./reports/coverage.out | tee ./reports/coverage.txt
 	@go tool cover -html=reports/coverage.out -o reports/html/coverage.html
+
+_codecomplexity:
 	### Cyclomatix Complexity Report
 	@gocyclo -avg $(GODIRS) | grep -v _test.go | tee reports/cyclocomplexity.txt
-	@exit $$(cat reports/exitcode.txt)
-
-_test_setup:
-	@mkdir -p tmp
-	@mkdir -p reports/html
-	@make _test_setup_home 2> /dev/null > /dev/null
-	@sync
-
-_test_setup_home:
-	@cp -r test/fixtures/home tmp/
 
 _release:
-	@echo "### Releasing $(VERSION)"
+	@echo "### Releasing v$(VERSION)"
+	@make --no-print-directory _isreleased 2> /dev/null
+	git tag v$(VERSION)
+	git push --tags
 
 REPORTS = reports/html/coverage.html
 .PHONY: $(REPORTS)
@@ -173,20 +193,17 @@ endif
 #
 # File targets
 #
-$(NAME): $(GOFILES) internal/version.go
-	CGO_ENABLED=0 go build -o $@ cmd/$(NAME)/$(NAME).go
+$(NAME): dist/$(NAME)_$(OS)_$(ARCH)/$(NAME)
+	install -m 755 dist/$(NAME)_$(OS)_$(ARCH)/$(NAME) $(NAME)
 
-dist/linux/$(NAME): $(GOFILES) internal/version.go
-	@mkdir -p dist/linux
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $@ cmd/$(NAME)/$(NAME).go
+dist/$(NAME)_$(OS)_$(ARCH)/$(NAME): $(GOFILES) internal/version.go
+	@mkdir -p dist
+	goreleaser --snapshot --skip-publish --rm-dist
 
-dist/darwin/$(NAME): $(GOFILES) internal/version.go
-	@mkdir -p dist/darwin
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o $@ cmd/$(NAME)/$(NAME).go
-
-internal/version.go: VERSION
-	@echo -e '// DO NOT EDIT THIS FILE. Generated from Makefile\npackage internal\n\nvar Version = "$(VERSION)"' \
-		> internal/version.go || exit 0
+cmd/$(NAME)/version.go: VERSION
+	@test -d cmd/$(NAME) && \
+	echo -e '// DO NOT EDIT THIS FILE. Generated from Makefile\npackage main\n\nvar Version = "$(VERSION)"' \
+		> cmd/$(NAME)/version.go || exit 0
 
 go.mod:
 	@$(DOTENV) make _go.mod

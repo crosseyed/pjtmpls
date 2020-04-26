@@ -3,7 +3,6 @@ package main
 
 import (
     "fmt"
-    "{{ .Env.GOSERVER }}/{{ .Env.GOGROUP }}/{{ .Project.NAME }}/internal"
     "{{ .Env.GOSERVER }}/{{ .Env.GOGROUP }}/{{ .Project.NAME }}/internal/options"
     "os"
 )
