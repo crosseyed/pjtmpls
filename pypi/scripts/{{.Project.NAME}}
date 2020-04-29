@@ -12,7 +12,7 @@ Options:
 import {{.Project.NAME}}
 
 from docopt import docopt
-from ebssnapshot import metadata
+from {{.Project.NAME}} import metadata
 
 if __name__ == '__main__':
     opts = docopt(__doc__, version=metadata.__version__)

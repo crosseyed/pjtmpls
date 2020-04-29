@@ -43,7 +43,7 @@ def clean(c):
     safe_rm_rf(c, "reports")
     safe_rm_rf(c, "htmlcov")
     safe_rm_rf(c, "*.egg-info")
-    safe_rm_rf(c, "ebssnapshot/*.pyc")
+    safe_rm_rf(c, "{{.Project.NAME}}/*.pyc")
 
 
 @task(aliases=['pip'])
