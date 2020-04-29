@@ -19,6 +19,11 @@ if os.path.exists(home_dotenv):
     load_dotenv(project_dotenv)
 
 #
+# Vars
+#
+PYPI_REPO = os.getenv('PYPI_REPO')
+
+#
 # Format vars
 #
 root = abspath(dirname(__file__))
@@ -96,7 +101,6 @@ def deploy(c, rel=False):
     if PYPI_REPO:
         c.run(
             "python setup.py sdist bdist_wheel upload -r {PYPI_REPO}".format(**_vars(rel)))
-    deploy_docker_registry(c, rel=rel)
 
 
 @task
