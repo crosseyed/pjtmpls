@@ -6,7 +6,6 @@ import platform
 import webbrowser
 
 from dotenv import load_dotenv
-from {{.Project.NAME}} import metadata
 from invoke import task
 from os import getenv
 from os.path import abspath, dirname, getctime, join
