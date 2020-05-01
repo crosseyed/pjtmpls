@@ -129,7 +129,3 @@ test.txt
 
 # Pytest cache
 /.pytest_cache/
-
-codeship.aes
-# make sure unencrypted secrets aren't published
-*.env

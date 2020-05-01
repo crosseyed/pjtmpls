@@ -1,32 +1,37 @@
 # prj:render
 import os
+import configparser
 import subprocess
 import platform
+import webbrowser
 
 from dotenv import load_dotenv
 from {{.Project.NAME}} import metadata
 from invoke import task
 from os import getenv
 from os.path import abspath, dirname, getctime, join
+from pathlib import Path
 from glob import glob
 from sys import version_info
 
-project_dotenv = join(dirname(__file__), '.env')
-load_dotenv(project_dotenv)
-
-home_dotenv = os.path.join(getenv('HOME'), '.env')
-if os.path.exists(home_dotenv):
-    load_dotenv(project_dotenv)
 
 #
 # Vars
 #
-PYPI_REPO = os.getenv('PYPI_REPO')
+root = dirname(__file__)
 
-#
-# Format vars
-#
-root = abspath(dirname(__file__))
+
+project_dotenv = join(root, '.env')
+load_dotenv(project_dotenv)
+
+home_dotenv = join(getenv('HOME'), '.env')
+if os.path.exists(home_dotenv):
+    load_dotenv(home_dotenv)
+
+config = configparser.ConfigParser()
+config.read(join(dirname(__file__), 'setup.cfg'))
+
+PYPI_REPO = os.getenv('PYPI_REPO')
 
 #
 # Required tasks - All builds must always have these tasks. Or tasks with these names that do the same work.
@@ -43,7 +48,7 @@ def clean(c):
     safe_rm_rf(c, "reports")
     safe_rm_rf(c, "htmlcov")
     safe_rm_rf(c, "*.egg-info")
-    safe_rm_rf(c, "{{.Project.NAME}}/*.pyc")
+    safe_rm_rf(c, slash("{{.Project.NAME}}/*.pyc"))
 
 
 @task(aliases=['pip'])
@@ -81,7 +86,7 @@ def build(c):
     # Create python distribution
     c.run("python setup.py sdist")
     c.run("python setup.py bdist_wheel")
-    c.run("mkdir -p build/{version}".format(**_vars()))
+    c.run( slash( "mkdir -p build/{version}".format(**_vars()) ) )
     c.run("mkdir -p dist")
 
 
@@ -90,7 +95,7 @@ def install(c):
     """
     Install Package(s)
     """
-    c.run("pip install -q dist/{project}-{version}*.whl".format(**_vars()))
+    c.run(slash("pip install -q dist/{project}-{version}*.whl").format(**_vars()))
 
 
 @task(aliases=['upload'])
@@ -108,8 +113,15 @@ def test(c):
     """
     Testing
     """
-    c.run("pytest")
-    c.run("radon cc -s . -i task.py")
+    print(getenv("BROWSE_REPORT"))
+    print(home_dotenv)
+    radon_txt = slash("reports/radon.txt")
+    complexity_html = slash("reports/complexity.html")
+    c.run(slash("pytest -c {root}/.pytest.ini".format(root=root)))
+    c.run("radon cc --total-average -s -o SCORE src -O {radon}; cat {radon}".format(radon=radon_txt))
+    c.run("ansi2html -t 'Cyclomatic Complexity' < {radon} > {complexity}".format(radon=radon_txt, complexity=complexity_html))
+    if getenv("BROWSE_REPORT") == "true":
+        c.run("inv reports")
 
 
 @task
@@ -117,17 +129,14 @@ def reports(c):
     """
     Open reports
     """
-    view = None
-    if platform.system() == "Linux":
-        view = "xdg-open"
-    elif platform.system() == "Darwin":
-        view = "open"
-    elif platform.system() == "Windows":
-        view = "start"
-    cov = os.path.join("reports","htmlcov","index.html")
-    unit = os.path.join("reports","unit","index.html")
-    c.run("{} {}".format(view, cov))
-    c.run("{} {}".format(view, unit))
+    cov = abspath(slash("reports/htmlcov/index.html"))
+    complexity = abspath(slash("reports/complexity.html"))
+    unit = abspath(slash("reports/unit/index.html"))
+    new = 1
+    for report in [cov, complexity, unit]:
+        webbrowser.open("file://" + report, new=new)
+        if new > 0:
+            new = 0
 
 
 @task
@@ -135,7 +144,7 @@ def version(c):
     """
     Get current version
     """
-    print(metadata.__version__)
+    config["metadata'"]
 
 #
 # Utilities
@@ -182,12 +191,17 @@ def safe_rm_rf(c, pattern):
 
         c.run("rm -rf {}".format(fullpath))
 
+def slash(text: str) -> str:
+    """
+    Replace slashes to backslashes on windows
+    """
+    return str(Path(text))
 
 def _vars(rel=False):
     fmt_vars = {
         'PYPI_REPO': PYPI_REPO,
-        'project': metadata.__project__,
-        'version': metadata.__version__,
+        'project': config["metadata"]["name"],
+        'version': config["metadata"]["version"],
         'root': root,
     }
     return fmt_vars
