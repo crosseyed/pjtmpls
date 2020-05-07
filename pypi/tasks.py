@@ -19,18 +19,18 @@ from sys import version_info
 #
 root = dirname(__file__)
 
-
-project_dotenv = join(root, '.env')
-load_dotenv(project_dotenv)
-
 home_dotenv = join(getenv('HOME'), '.env')
 if os.path.exists(home_dotenv):
     load_dotenv(home_dotenv)
+
+project_dotenv = join(root, '.env')
+load_dotenv(project_dotenv)
 
 config = configparser.ConfigParser()
 config.read(join(dirname(__file__), 'setup.cfg'))
 
 PYPI_REPO = os.getenv('PYPI_REPO')
+
 
 #
 # Required tasks - All builds must always have these tasks. Or tasks with these names that do the same work.
@@ -73,13 +73,14 @@ def deps_compile(c):
     touch("requirements-setup.in")
     touch("requirements.in")
 
+
 @task
 def metadata(c):
     """
     Generate metadata
     """
     verfile = join(root, slash("src/{{.Project.NAME}}/metadata.py"))
-    if getctime(join(root, "setup.cfg")) < getctime(verfile):
+    if not checkupdate(join(root, "setup.cfg"), verfile):
         return
         
     fh = open(verfile, 'w')
@@ -87,10 +88,11 @@ def metadata(c):
 # Do not manually edit.
 __project__ = "{name}"
 __version__ = "{version}"
-""".format(
-    name=config["metadata"]["name"],
-    version=config["metadata"]["version"])
+__author__  = "{author}"
+__email__   = "{author_email}"
+""".format(**config["metadata"])
 )
+
 
 @task(post=[metadata])
 def metadata_compile(c):
@@ -163,6 +165,16 @@ def reports(c):
 #
 # Utilities
 #
+def checkupdate(src:str, dst:str) -> bool:
+    """
+    Check if file source file is older or destination file does not exists
+    """
+    if not Path(dst).exists():
+        return True
+    if getctime(src) < getctime(dst):
+        return True
+    return False
+
 
 def git_branch():
     """
