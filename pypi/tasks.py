@@ -46,8 +46,10 @@ def clean(c):
     safe_rm_rf(c, "dist")
     safe_rm_rf(c, "reports")
     safe_rm_rf(c, "htmlcov")
-    safe_rm_rf(c, "*.egg-info")
-    safe_rm_rf(c, slash("{{.Project.NAME}}/*.pyc"))
+    safe_rm_rf(c, slash("src/*.egg-info"))
+    safe_rm_rf(c, slash("src/{{.Project.NAME}}/*.pyc"))
+    safe_rm_rf(c, slash("src/{{.Project.NAME}}/__pycache__"))
+    safe_rm_rf(c, slash("tests/__pycache__"))
 
 
 @task(aliases=['pip'])
@@ -68,16 +70,37 @@ def deps_compile(c):
     """
     Update dependency requirements if any
     """
-
-    def touch(fname, times=None):
-        with open(fname, 'a'):
-            os.utime(fname, times)
-
     touch("requirements-setup.in")
     touch("requirements.in")
 
+@task
+def metadata(c):
+    """
+    Generate metadata
+    """
+    verfile = join(root, slash("src/{{.Project.NAME}}/metadata.py"))
+    if getctime(join(root, "setup.cfg")) < getctime(verfile):
+        return
+        
+    fh = open(verfile, 'w')
+    fh.write("""# This file is generated in task.py:version.
+# Do not manually edit.
+__project__ = "{name}"
+__version__ = "{version}"
+""".format(
+    name=config["metadata"]["name"],
+    version=config["metadata"]["version"])
+)
 
-@task(pre=[deps])
+@task(post=[metadata])
+def metadata_compile(c):
+    """
+    Same as metadata but forces compilation
+    """
+    touch(join(root, "setup.cfg"))
+
+
+@task(pre=[deps, metadata])
 def build(c):
     """
     Build package
@@ -112,8 +135,6 @@ def test(c):
     """
     Testing
     """
-    print(getenv("BROWSE_REPORT"))
-    print(home_dotenv)
     radon_txt = slash("reports/radon.txt")
     complexity_html = slash("reports/complexity.html")
     c.run(slash("pytest -c {root}/.pytest.ini".format(root=root)))
@@ -128,27 +149,20 @@ def reports(c):
     """
     Open reports
     """
-    cov = abspath(slash("reports/htmlcov/index.html"))
-    complexity = abspath(slash("reports/complexity.html"))
-    unit = abspath(slash("reports/unit/index.html"))
+    reports = [
+      "reports/htmlcov/index.html", # Coverage
+      "reports/complexity.html",    # Complexity
+      "reports/unit/index.html"     # Unit
+    ]
     new = 1
-    for report in [cov, complexity, unit]:
-        webbrowser.open("file://" + report, new=new)
+    for report in reports:
+        webbrowser.open("file://" + abspath(slash(report)), new=new)
         if new > 0:
             new = 0
-
-
-@task
-def version(c):
-    """
-    Get current version
-    """
-    config["metadata'"]
-
+    
 #
 # Utilities
 #
-
 
 def git_branch():
     """
@@ -190,11 +204,18 @@ def safe_rm_rf(c, pattern):
 
         c.run("rm -rf {}".format(fullpath))
 
+
 def slash(text: str) -> str:
     """
     Replace slashes to backslashes on windows
     """
     return str(Path(text))
+
+
+def touch(fname, times=None):
+    with open(fname, 'a'):
+        os.utime(fname, times)
+
 
 def _vars(rel=False):
     fmt_vars = {
