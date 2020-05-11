@@ -196,7 +196,7 @@ endif
 $(NAME): dist/$(NAME)_$(OS)_$(ARCH)/$(NAME)
 	install -m 755 dist/$(NAME)_$(OS)_$(ARCH)/$(NAME) $(NAME)
 
-dist/$(NAME)_$(OS)_$(ARCH)/$(NAME): $(GOFILES) internal/version.go
+dist/$(NAME)_$(OS)_$(ARCH)/$(NAME): $(GOFILES) cmd/$(NAME)/version.go
 	@mkdir -p dist
 	goreleaser --snapshot --skip-publish --rm-dist
 
