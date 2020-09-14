@@ -57,9 +57,9 @@ def deps(c):
     """
     Lock packages to a version using pip compile
     """
-    if getctime("requirements-setup.in") > getctime("requirements-setup.txt"):
+    if not os.path.exists("requirements-setup.txt") or getctime("requirements-setup.in") > getctime("requirements-setup.txt"):
         c.run("pip-compile --output-file=requirements-setup.txt requirements-setup.in")
-    if getctime("requirements.in") > getctime("requirements.txt"):
+    if not os.path.exists("requirements.txt") or getctime("requirements.in") > getctime("requirements.txt"):
         c.run("pip-compile --output-file=requirements.txt requirements.in")
     c.run("pip install --quiet --requirement requirements-setup.txt")
     c.run("pip install --quiet --requirement requirements.txt")
