@@ -1,4 +1,4 @@
-// prj:render
+// kick:render
 package options
 
 import (
@@ -6,10 +6,10 @@ import (
 )
 
 func GetUsage(argv []string, version string) *Options {
-	usage := `{{ .Project.NAME }}
+	usage := `${PROJECT_NAME}
 
 Usage:
-  {{ .Project.NAME }}
+  ${PROJECT_NAME}
 
 Options:
   -h --help     Show this screen.

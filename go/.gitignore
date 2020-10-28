@@ -1,4 +1,4 @@
-# prj:render
+# kick:render
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -27,5 +27,5 @@
 /tmp/
 /vendor/
 /.cache
-/{{.Project.NAME}}
+/${PROJECT_NAME}
 

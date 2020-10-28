@@ -1,8 +1,8 @@
-# prj:render
+# kick:render
 SHELL = /bin/bash
 
 # Project
-NAME := {{ .Project.NAME }}
+NAME := ${PROJECT_NAME}
 GOPATH := $(shell go env GOPATH)
 VERSION ?= $(shell cat VERSION)
 COMMIT := $(shell test -d .git && git rev-parse --short HEAD)

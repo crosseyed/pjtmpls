@@ -1,9 +1,9 @@
-// prj:render
+// kick:render
 package main
 
 import (
     "fmt"
-    "{{ .Env.GOSERVER }}/{{ .Env.GOGROUP }}/{{ .Project.NAME }}/internal/options"
+    "${GOSERVER}/${GOGROUP}/${PROJECT_NAME}/internal/options"
     "os"
 )
 

@@ -1,2 +1,2 @@
-# prj:render
-# {{.Project.NAME}}
+# kick:render
+# ${PROJECT_NAME}

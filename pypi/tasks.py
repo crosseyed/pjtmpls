@@ -1,4 +1,4 @@
-# prj:render
+# kick:render
 import os
 import configparser
 import subprocess
@@ -47,8 +47,8 @@ def clean(c):
     safe_rm_rf(c, "reports")
     safe_rm_rf(c, "htmlcov")
     safe_rm_rf(c, slash("src/*.egg-info"))
-    safe_rm_rf(c, slash("src/{{.Project.NAME}}/*.pyc"))
-    safe_rm_rf(c, slash("src/{{.Project.NAME}}/__pycache__"))
+    safe_rm_rf(c, slash("src/${PROJECT_NAME}/*.pyc"))
+    safe_rm_rf(c, slash("src/${PROJECT_NAME}/__pycache__"))
     safe_rm_rf(c, slash("tests/__pycache__"))
 
 
@@ -79,7 +79,7 @@ def metadata(c):
     """
     Generate metadata
     """
-    verfile = join(root, slash("src/{{.Project.NAME}}/metadata.py"))
+    verfile = join(root, slash("src/${PROJECT_NAME}/metadata.py"))
     if not checkupdate(join(root, "setup.cfg"), verfile):
         return
         
