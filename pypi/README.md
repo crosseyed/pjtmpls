@@ -1,4 +1,5 @@
-# EBS Snapshots
+# kick:render
+# ${PROJECT_NAME}
 
 ## Usage
 
