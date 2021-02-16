@@ -17,6 +17,9 @@ inv -l
 ```bash
 # Installs development requirements
 pip install -r requirements-setup.txt
+# Alternatively if requirements-setup.txt has not been created
+pip install -r requirements-setup.in
+
 inv deps-compile
 
 inv clean
