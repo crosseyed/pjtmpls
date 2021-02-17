@@ -14,18 +14,6 @@ inv -l
 ```
 
 ### Development Work
-```bash
-# Installs development requirements
-pip install -r requirements-setup.txt
-# Alternatively if requirements-setup.txt has not been created
-pip install -r requirements-setup.in
 
-inv deps-compile
-
-inv clean
-inv build
-
-# Links package for development purposes
-pip install -e .
-```
+See [DEVELOPMENT.md](DEVELOPMENT.md) to get started on development
 
