@@ -1,6 +1,8 @@
+ansi2html
 coverage
 faker
 invoke
+liccheck
 pip-tools
 pytest
 pytest-cov

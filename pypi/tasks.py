@@ -133,6 +133,14 @@ def deploy(c, rel=False):
 
 
 @task
+def check_licenses(c):
+    """
+    Check licenses
+    """
+    c.run("liccheck -s .licensecheck.ini -r requirements.txt -R LICENSES.txt")
+
+
+@task
 def test(c):
     """
     Testing
